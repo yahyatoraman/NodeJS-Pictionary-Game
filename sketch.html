@@ -1,0 +1,292 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+    <title> Sketch and Guess </title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script defer src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script defer src="script.js"></script>
+    <style>
+        body {
+            margin: 0px;
+        }
+
+        #wrapper {
+            margin: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            -ms-transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%);
+            border-radius: 40px 40px 0px 0px;
+            border-right: 2px solid #f26524;
+            border-left: 2px solid #f26524;
+            border-bottom: 2px solid #f26524;
+        }
+
+        #grid-container {
+            grid-template-columns: 40px 320px 40px;
+            grid-template-rows: 150px 30px 200px 150px 30px;
+            display: grid;
+        }
+
+        #scoreboard {
+            grid-column-start: 1;
+            grid-column-end: 4;
+            grid-row-start: 1;
+            grid-row-end: 2;
+            background-color: lightblue;
+            text-align: center;
+            overflow: scroll;
+            color: white;
+            background-color: #f26524;
+            background-size: cover;
+            border-radius: 35px 35px 0px 0px;
+        }
+
+        #scoreboard i,
+        #scoreboard p {
+            display: inline-block;
+            padding: 0 10px;
+        }
+
+        #scoreboard-header {
+            padding-top: 10px;
+            font-weight: bold;
+        }
+
+        #scoreboard table {
+            width: 100%;
+        }
+
+        #scoreboard table tr>td {
+            padding: 1px 0px;
+        }
+
+        /* TODO: get rid of this th->tr workaround */
+        #scoreboard table tr:nth-child(1) {
+            font-weight: bold;
+            color: #f26524;
+            height: 25px;
+            background-color: white;
+        }
+
+        #scoreboard table tr:nth-child(2)>td {
+            padding: 4px;
+        }
+
+        #scoreboard table tr:nth-child(4)>td {
+            background-color: #ab6126;
+        }
+
+        #time-bar {
+            grid-column-start: 1;
+            grid-column-end: 4;
+            grid-row-start: 2;
+            grid-row-end: 3;
+            border-bottom: 2px solid #f26524;
+        }
+
+        /* id = drawing-info */
+        #time-bar>p {
+            text-align: center;
+            margin-top: 1%;
+            color: black;
+            font-weight: bold;
+        }
+
+        #progress-bar {
+            grid-column-start: 1;
+            grid-column-end: 4;
+            grid-row-start: 2;
+            grid-row-end: 3;
+            background-color: #74cf3c;
+            width: 1%;
+            z-index: -1;
+        }
+
+        #color-wrapper {
+            grid-column-start: 1;
+            grid-column-end: 2;
+            grid-row-start: 3;
+            grid-row-end: 4;
+            margin-top: auto;
+            margin-bottom: auto;
+            margin-left: 18%;
+        }
+
+        .color {
+            height: 25px;
+            width: 25px;
+            border-radius: 50%;
+            background-color: #dcfce4;
+            display: inline-block;
+        }
+
+        .color-icon {
+            display: block;
+            padding: 5px;
+        }
+
+        #canvas {
+            grid-column-start: 2;
+            grid-column-end: 3;
+            grid-row-start: 3;
+            grid-row-end: 4;
+            border-right: 2px solid #f26524;
+            border-left: 2px solid #f26524;
+        }
+
+        #thickness-wrapper {
+            grid-column-start: 3;
+            grid-column-end: 4;
+            grid-row-start: 3;
+            grid-row-end: 4;
+            margin: auto;
+        }
+
+        .thickness-symbol {
+            padding: 15px;
+        }
+
+        #line-width-slider {
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            height: 120px;
+        }
+
+        #chatbox {
+            grid-column-start: 1;
+            grid-column-end: 4;
+            grid-row-start: 4;
+            grid-row-end: 5;
+            overflow: scroll;
+            word-wrap: break-word;
+            padding-top: 10px;
+            border-top: 2px solid #f26524;
+        }
+
+        #chatbox p:nth-child(odd) {
+            background-color: #f2c2ac;
+            color: black;
+            padding: 10px 10px;
+        }
+
+        #chatbox p:nth-child(even) {
+            background-color: white;
+            color: black;
+            padding: 0px 10px;
+        }
+
+        #guess-input {
+            grid-column-start: 1;
+            grid-column-end: 4;
+            grid-row-start: 5;
+            grid-row-end: 6;
+            height: 100%;
+            width: 100%;
+            text-indent: 8px;
+        }
+
+        #guess-input:focus {
+            outline: none;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        #modal-content {
+            background-color: #fefefe;
+            margin: 20% auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+
+<body>
+    <div id="wrapper">
+        <div id="grid-container">
+
+            <div id="scoreboard">
+                <div id="scoreboard-header">
+                    <i class="glyphicon glyphicon glyphicon-hand-right"></i>
+                    <p> Leaderboard </p>
+                    <i class="glyphicon glyphicon glyphicon-hand-left"></i>
+                </div>
+                <table id="scoreboard-table">
+                    <tr>
+                        <td>Rank</td>
+                        <td>Username</td>
+                        <td>Points</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div id="time-bar">
+                <p id="drawing-info"> Waiting for other players to join. </p>
+            </div>
+            <div id="progress-bar"></div>
+
+            <div id="color-wrapper">
+                <span onClick="requestNewStrokeStyle(this.id)" class="color" id="black"
+                    style="background-color: black;"></span>
+                <span onClick="requestNewStrokeStyle(this.id)" class="color" id="green"
+                    style="background-color: green;"></span>
+                <span onClick="requestNewStrokeStyle(this.id)" class="color" id="blue"
+                    style="background-color: blue;"></span>
+                <span onClick="requestNewStrokeStyle(this.id)" class="color" id="red" style="background-color: red;"></span>
+                <span onClick="requestNewStrokeStyle(this.id)" id="white"
+                    class="glyphicon glyphicon glyphicon-erase color-icon"></span>
+                <span onClick="requestClearingCanvas(); requestNewStrokeStyle('black');"
+                    class="glyphicon glyphicon glyphicon-trash color-icon"></span>
+            </div>
+
+            <canvas id="canvas" width="320px" height="200px"> </canvas>
+
+            <div id="thickness-wrapper">
+                <i class="glyphicon glyphicon glyphicon-plus thickness-symbol"></i>
+                <input id="line-width-slider" type="range" min="1" max="10" value="6" step="1">
+                <i class="glyphicon glyphicon glyphicon-minus thickness-symbol"></i>
+            </div>
+
+            <!-- filled with javascript -->
+            <div id="chatbox"></div>
+
+            <input type="text" id="guess-input" placeholder="Write your guess...">
+
+
+        </div>
+    </div>
+
+    <!-- Modal Popup -->
+    <div id="modal">
+
+        <div id="modal-content">
+            <p id="modal-text">Some text in the Modal..</p>
+        </div>
+
+    </div>
+
+</body>
+
+
+</html>
